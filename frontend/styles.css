@@ -515,6 +515,30 @@ code {
   color: rgba(31, 35, 38, 0.64);
 }
 
+.inlineResult {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(159, 108, 82, 0.14);
+  background: rgba(255, 249, 230, 0.78);
+}
+
+.inlineResult__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(159, 108, 82, 0.14);
+}
+
+.inlineResult__title {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: rgba(31, 35, 38, 0.82);
+}
+
 .resultCard {
   padding: 18px;
 }
@@ -554,6 +578,9 @@ code {
   line-height: 1.75;
   color: rgba(31, 35, 38, 0.80);
   white-space: pre-wrap;
+  max-height: 360px;
+  overflow: auto;
+  padding-top: 12px;
 }
 
 .sources {
