@@ -46,21 +46,6 @@ Backend
 
 ### Hosting the backend on Google Colab (recommended for GPU)
 
-- **Create a Colab notebook** and upload / clone this repo into the Colab runtime.
-- **Install deps**:
-
-```bash
-pip install -r backend/requirements.txt
-```
-
-- **Expose to your other laptop via ngrok** (easiest demo path):
-
-```bash
-export NGROK_AUTHTOKEN=...
-export USE_NGROK=1
-python backend/colab_run.py
-```
-
 It will print **`Public URL: https://....ngrok-free.app`**. Use that as your frontend’s API base URL and call:
 - `GET /health`
 - `POST /recommend` with JSON: `{"query":"..."}`
