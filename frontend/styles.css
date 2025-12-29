@@ -228,40 +228,38 @@ body {
   color: var(--muted2);
 }
 
-/* ----------- Slogan -> response crossfade ----------- */
+/* ----------- Slogan -> generating overlay ----------- */
 .heroSwap {
   position: relative;
   min-height: 360px;
 }
 
 .heroSwap__panel {
-  transition: opacity 260ms ease, transform 260ms ease, filter 260ms ease;
+  transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
 }
 
 .heroSwap__panel--slogan {
   position: relative;
 }
 
-.heroSwap__panel--response {
+.heroSwap__panel--loading {
   position: absolute;
   inset: 0;
+  display: grid;
+  align-content: start;
   opacity: 0;
   transform: translateY(6px);
   pointer-events: none;
 }
 
-body.hasHeroResponse .heroSwap__panel--slogan {
-  position: absolute;
-  inset: 0;
+body.isGenerating .heroSwap__panel--slogan {
   opacity: 0;
   transform: translateY(-6px);
   filter: blur(0.2px);
   pointer-events: none;
 }
 
-body.hasHeroResponse .heroSwap__panel--response {
-  position: relative;
-  inset: auto;
+body.isGenerating .heroSwap__panel--loading {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;

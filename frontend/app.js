@@ -99,10 +99,21 @@ function syncQueryToHidden() {
   queryEl.value = String(heroQueryEl.value || "");
 }
 
-function setHeroResponse(text, enabled) {
-  const el = document.getElementById("heroResponseText");
-  if (el) el.textContent = String(text || "");
-  document.body.classList.toggle("hasHeroResponse", Boolean(enabled));
+function setGenerating(isGenerating, text) {
+  const el = document.getElementById("heroLoadingText");
+  if (el && typeof text !== "undefined") el.textContent = String(text || "");
+  document.body.classList.toggle("isGenerating", Boolean(isGenerating));
+}
+
+function scrollToResult() {
+  const anchor = document.getElementById("resultAnchor");
+  if (!anchor) return;
+  // Wait for DOM paint so layout height is correct.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 function initDemo() {
@@ -123,23 +134,58 @@ function initDemo() {
   // Keep the hidden form value in sync with the visible hero prompt.
   heroQueryEl?.addEventListener("input", () => {
     syncQueryToHidden();
-    // If the user edits the prompt, show the slogan again until a new run.
-    document.body.classList.remove("hasHeroResponse");
+    // If the user edits the prompt, ensure we are not in generating state.
+    document.body.classList.remove("isGenerating");
   });
   syncQueryToHidden();
 
-  heroRunBtn?.addEventListener("click", async () => {
-    syncQueryToHidden();
-    const queryEl = document.getElementById("query");
-    const query = String(queryEl?.value || "").trim();
+  async function runRecommendation() {
+    const query = String(heroQueryEl?.value || "").trim();
     if (!query) {
       heroQueryEl?.focus();
       return;
     }
 
-    // Submit the demo form (runs recommend()).
-    form?.requestSubmit?.();
-  });
+    const baseUrl = normalizeBaseUrl(apiBaseEl?.value);
+
+    heroRunBtn?.setAttribute("disabled", "true");
+    setStatus("Generating recommendations…");
+    showResult("Working…", []);
+    setGenerating(true, "Generating recommendations…");
+
+    try {
+      const { ok, json, ms } = await recommend(baseUrl, query);
+      setLatency(ms);
+
+      if (!ok) {
+        const detail = json?.detail ? `\n\n${String(json.detail)}` : "";
+        setStatus("Request failed. See response for details.", "error");
+        showResult(`Error (${json?.status || "HTTP error"}).${detail}`, []);
+        // Restore slogan and scroll to error output.
+        setGenerating(false);
+        scrollToResult();
+        return;
+      }
+
+      setStatus("Done.", "ok");
+      const responseText = String(json?.response || "");
+      showResult(responseText, json?.sources || []);
+      // Restore slogan, clear prompt, then scroll to the full response.
+      setGenerating(false);
+      if (heroQueryEl) heroQueryEl.value = "";
+      syncQueryToHidden();
+      scrollToResult();
+    } catch (err) {
+      setStatus("Network error. Check the URL/CORS.", "error");
+      showResult(String(err), []);
+      setGenerating(false);
+      scrollToResult();
+    } finally {
+      heroRunBtn?.removeAttribute("disabled");
+    }
+  }
+
+  heroRunBtn?.addEventListener("click", runRecommendation);
 
   healthBtn?.addEventListener("click", async () => {
     clearLatency();
@@ -151,7 +197,6 @@ function initDemo() {
       if (!ok) {
         setStatus(`Health check failed (${json?.status || "error"}).`, "error");
         showResult(JSON.stringify(json, null, 2), []);
-        setHeroResponse("Health check failed. See the full response below.", true);
         return;
       }
       setStatus(`Backend: ${json?.status || "ok"}`, "ok");
@@ -161,57 +206,16 @@ function initDemo() {
         }`,
         []
       );
-      setHeroResponse("Backend is ready. Run a prompt to generate recommendations.", true);
     } catch (e) {
       setStatus("Could not reach the backend. Check the URL/CORS.", "error");
       showResult(String(e), []);
-      setHeroResponse("Could not reach the backend. Check the URL/CORS and try again.", true);
     }
   });
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearLatency();
-
-    syncQueryToHidden();
-    const queryEl = document.getElementById("query");
-    const query = String(queryEl?.value || "").trim();
-    if (!query) return;
-
-    const baseUrl = normalizeBaseUrl(apiBaseEl?.value);
-
-    heroRunBtn?.setAttribute("disabled", "true");
-    setStatus("Generating recommendations…");
-    showResult("Working…", []);
-    setHeroResponse("Generating…", true);
-
-    // Clear the visible prompt immediately after starting a run.
-    if (heroQueryEl) heroQueryEl.value = "";
-    if (queryEl) queryEl.value = "";
-
-    try {
-      const { ok, json, ms } = await recommend(baseUrl, query);
-      setLatency(ms);
-
-      if (!ok) {
-        const detail = json?.detail ? `\n\n${String(json.detail)}` : "";
-        setStatus("Request failed. See response for details.", "error");
-        showResult(`Error (${json?.status || "HTTP error"}).${detail}`, []);
-        setHeroResponse(`Error (${json?.status || "HTTP error"}).`, true);
-        return;
-      }
-
-      setStatus("Done.", "ok");
-      const responseText = String(json?.response || "");
-      showResult(responseText, json?.sources || []);
-      setHeroResponse(responseText || "Done.", true);
-    } catch (err) {
-      setStatus("Network error. Check the URL/CORS.", "error");
-      showResult(String(err), []);
-      setHeroResponse("Network error. Check the URL/CORS and try again.", true);
-    } finally {
-      heroRunBtn?.removeAttribute("disabled");
-    }
+    await runRecommendation();
   });
 }
 
