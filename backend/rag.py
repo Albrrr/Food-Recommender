@@ -2,6 +2,24 @@
 #Makes call to the AI model to search the RAG for fitting documents
 #After processing the data, generates a response by making another call to the AI
 
+import os
+
+
+def _max_new_tokens() -> int:
+    """
+    Controls response length.
+
+    The previous default (128) was too short for "3 items + paragraphs".
+    """
+    raw = os.environ.get("MAX_NEW_TOKENS", "").strip()
+    if not raw:
+        return 512
+    try:
+        return max(32, min(int(raw), 2048))
+    except ValueError:
+        return 512
+
+
 def run_rag(query, vector_store, model, tokenizer, k=3):
     docs = vector_store.similarity_search(query, k=k)
     context = "\n\n".join([doc.page_content for doc in docs])
@@ -35,9 +53,13 @@ def run_rag(query, vector_store, model, tokenizer, k=3):
 
     outputs = model.generate(
         input_ids,
-        max_new_tokens=128,
-        do_sample=False
+        max_new_tokens=_max_new_tokens(),
+        do_sample=False,
+        eos_token_id=tokenizer.eos_token_id,
+        pad_token_id=tokenizer.eos_token_id,
     )
 
-    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return decoded.split("assistant")[-1].strip()
+    # Decode only newly generated tokens to avoid brittle string splitting.
+    gen_only = outputs[0][input_ids.shape[-1]:]
+    decoded = tokenizer.decode(gen_only, skip_special_tokens=True)
+    return decoded.strip()
