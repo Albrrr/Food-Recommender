@@ -22,14 +22,12 @@ food-recommendation-rag/
 │   ├── schemas.py
 │   ├── colab_run.py
 │   ├── DATA.json
-│   ├── requirements.txt
-│   └── README.md
+│   └── requirements.txt
 │
 ├── frontend/
 │   ├── index.html
 │   ├── app.js
-│   ├── styles.css
-│   └── README.md
+│   └── styles.css
 │
 ├── .gitignore
 └── README.md
