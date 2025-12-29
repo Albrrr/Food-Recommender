@@ -1,148 +1,217 @@
-const STORAGE_KEY = "foodrecommender_api_base";
+const DEFAULT_BASE_URL = "https://phenotypically-multiperforate-rodolfo.ngrok-free.dev";
 
-function $(id) {
-  return document.getElementById(id);
+function normalizeBaseUrl(raw) {
+  const v = String(raw || "").trim();
+  if (!v) return DEFAULT_BASE_URL;
+  return v.replace(/\/+$/, "");
 }
 
-function setStatus(text, kind) {
-  const el = $("status");
-  el.textContent = text || "";
-  el.classList.remove("ok", "err");
-  if (kind === "ok") el.classList.add("ok");
-  if (kind === "err") el.classList.add("err");
+function setStatus(text, kind = "info") {
+  const el = document.getElementById("status");
+  if (!el) return;
+  el.textContent = text;
+  el.dataset.kind = kind;
 }
 
-function normalizeBaseUrl(s) {
-  const trimmed = (s || "").trim();
-  if (!trimmed) return "";
-  return trimmed.replace(/\/+$/, "");
+function setLatency(ms) {
+  const pill = document.getElementById("latencyPill");
+  if (!pill) return;
+  pill.hidden = false;
+  pill.textContent = `${Math.round(ms)}ms`;
 }
 
-function getApiBase() {
-  return normalizeBaseUrl($("apiBase").value);
+function clearLatency() {
+  const pill = document.getElementById("latencyPill");
+  if (!pill) return;
+  pill.hidden = true;
+  pill.textContent = "";
 }
 
-function saveApiBase() {
-  const base = getApiBase();
-  if (!base) {
-    localStorage.removeItem(STORAGE_KEY);
+function showResult(text, sources) {
+  const resultText = document.getElementById("resultText");
+  const sourcesWrap = document.getElementById("sources");
+  const sourcesList = document.getElementById("sourcesList");
+
+  if (resultText) resultText.textContent = text || "";
+
+  const src = Array.isArray(sources) ? sources : [];
+  if (!sourcesWrap || !sourcesList) return;
+
+  sourcesList.innerHTML = "";
+  if (src.length === 0) {
+    sourcesWrap.hidden = true;
     return;
   }
-  localStorage.setItem(STORAGE_KEY, base);
-}
 
-function loadApiBase() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) $("apiBase").value = saved;
-}
-
-async function apiFetch(path, options) {
-  const base = getApiBase();
-  if (!base) throw new Error("Set Backend URL first (paste your ngrok URL).");
-  const url = `${base}${path.startsWith("/") ? "" : "/"}${path}`;
-  const res = await fetch(url, options);
-  const contentType = res.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json") ? await res.json() : await res.text();
-  if (!res.ok) {
-    const detail = payload?.detail || payload?.error || (typeof payload === "string" ? payload : JSON.stringify(payload));
-    throw new Error(detail || `Request failed (${res.status})`);
-  }
-  return payload;
-}
-
-function renderAnswer(text) {
-  const el = $("answer");
-  el.classList.remove("muted");
-  el.textContent = text || "";
-  if (!text) {
-    el.classList.add("muted");
-    el.textContent = "No answer returned.";
-  }
-}
-
-function renderSources(sources) {
-  const el = $("sources");
-  el.innerHTML = "";
-  const list = Array.isArray(sources) ? sources : [];
-  if (list.length === 0) {
-    el.classList.add("muted");
+  for (const s of src) {
     const li = document.createElement("li");
-    li.textContent = "No sources returned.";
-    el.appendChild(li);
-    return;
+    li.textContent = String(s);
+    sourcesList.appendChild(li);
   }
-  el.classList.remove("muted");
-  for (const s of list) {
-    const li = document.createElement("li");
-    li.textContent = s;
-    el.appendChild(li);
-  }
+  sourcesWrap.hidden = false;
 }
 
-function setLoading(isLoading) {
-  $("submit").disabled = isLoading;
-  $("checkHealth").disabled = isLoading;
-  $("saveApiBase").disabled = isLoading;
+async function checkHealth(baseUrl) {
+  const t0 = performance.now();
+  const res = await fetch(`${baseUrl}/health`, { method: "GET" });
+  const json = await res.json().catch(() => ({}));
+  return { ok: res.ok, json, ms: performance.now() - t0 };
 }
 
-async function onHealth() {
-  setLoading(true);
-  setStatus("Checking…");
-  try {
-    const data = await apiFetch("/health", { method: "GET" });
-    if (data.status === "ok") setStatus("Backend OK", "ok");
-    else setStatus(`Not ready: ${data.error || "unknown error"}`, "err");
-  } catch (e) {
-    setStatus(e.message || String(e), "err");
-  } finally {
-    setLoading(false);
-  }
+async function recommend(baseUrl, query) {
+  const t0 = performance.now();
+  const res = await fetch(`${baseUrl}/recommend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+  const json = await res.json().catch(() => ({}));
+  return { ok: res.ok, json, ms: performance.now() - t0 };
 }
 
-async function onRecommend() {
-  const query = ($("query").value || "").trim();
-  if (!query) {
-    setStatus("Type a query first.", "err");
-    return;
-  }
+function scrollToDemo() {
+  const el = document.getElementById("demo");
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-  setLoading(true);
-  setStatus("Generating…");
-  renderAnswer("Working…");
-  renderSources([]);
+function applyExample(example) {
+  const heroQueryEl = document.getElementById("heroQuery");
+  const queryEl = document.getElementById("query");
+  if (heroQueryEl) heroQueryEl.value = example;
+  if (queryEl) queryEl.value = example;
+  heroQueryEl?.focus();
+}
 
-  try {
-    const data = await apiFetch("/recommend", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
+function initExamples() {
+  document.querySelectorAll("[data-example]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const ex = btn.getAttribute("data-example") || "";
+      applyExample(ex);
     });
-    renderAnswer(data.response);
-    renderSources(data.sources);
-    setStatus("Done", "ok");
-  } catch (e) {
-    renderAnswer("");
-    renderSources([]);
-    setStatus(e.message || String(e), "err");
-  } finally {
-    setLoading(false);
+  });
+}
+
+function syncQueryToHidden() {
+  const heroQueryEl = document.getElementById("heroQuery");
+  const queryEl = document.getElementById("query");
+  if (!heroQueryEl || !queryEl) return;
+  queryEl.value = String(heroQueryEl.value || "");
+}
+
+function setHeroResponse(text, enabled) {
+  const el = document.getElementById("heroResponseText");
+  if (el) el.textContent = String(text || "");
+  document.body.classList.toggle("hasHeroResponse", Boolean(enabled));
+}
+
+function initDemo() {
+  const apiBaseEl = document.getElementById("apiBaseUrl");
+  const form = document.getElementById("demoForm");
+  const healthBtn = document.getElementById("healthBtn");
+  const heroQueryEl = document.getElementById("heroQuery");
+  const heroRunBtn = document.getElementById("heroRunBtn");
+
+  if (apiBaseEl) {
+    const saved = localStorage.getItem("apiBaseUrl") || "";
+    apiBaseEl.value = saved || DEFAULT_BASE_URL;
+    apiBaseEl.addEventListener("change", () => {
+      localStorage.setItem("apiBaseUrl", apiBaseEl.value.trim());
+    });
   }
-}
 
-function wire() {
-  loadApiBase();
+  // Keep the hidden form value in sync with the visible hero prompt.
+  heroQueryEl?.addEventListener("input", () => {
+    syncQueryToHidden();
+    // If the user edits the prompt, show the slogan again until a new run.
+    document.body.classList.remove("hasHeroResponse");
+  });
+  syncQueryToHidden();
 
-  $("saveApiBase").addEventListener("click", () => {
-    saveApiBase();
-    setStatus("Saved backend URL", "ok");
+  heroRunBtn?.addEventListener("click", async () => {
+    syncQueryToHidden();
+    const queryEl = document.getElementById("query");
+    const query = String(queryEl?.value || "").trim();
+    if (!query) {
+      heroQueryEl?.focus();
+      return;
+    }
+
+    // Submit the demo form (runs recommend()).
+    form?.requestSubmit?.();
   });
 
-  $("checkHealth").addEventListener("click", onHealth);
-  $("submit").addEventListener("click", onRecommend);
+  healthBtn?.addEventListener("click", async () => {
+    clearLatency();
+    setStatus("Checking backend health…");
+    const baseUrl = normalizeBaseUrl(apiBaseEl?.value);
+    try {
+      const { ok, json, ms } = await checkHealth(baseUrl);
+      setLatency(ms);
+      if (!ok) {
+        setStatus(`Health check failed (${json?.status || "error"}).`, "error");
+        showResult(JSON.stringify(json, null, 2), []);
+        setHeroResponse("Health check failed. See the full response below.", true);
+        return;
+      }
+      setStatus(`Backend: ${json?.status || "ok"}`, "ok");
+      showResult(
+        `Backend ready.\n\nVector store: ${json?.has_vector_store ? "loaded" : "missing"}\nModel: ${
+          json?.has_model ? "loaded" : "missing"
+        }`,
+        []
+      );
+      setHeroResponse("Backend is ready. Run a prompt to generate recommendations.", true);
+    } catch (e) {
+      setStatus("Could not reach the backend. Check the URL/CORS.", "error");
+      showResult(String(e), []);
+      setHeroResponse("Could not reach the backend. Check the URL/CORS and try again.", true);
+    }
+  });
 
-  $("query").addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") onRecommend();
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearLatency();
+
+    syncQueryToHidden();
+    const queryEl = document.getElementById("query");
+    const query = String(queryEl?.value || "").trim();
+    if (!query) return;
+
+    const baseUrl = normalizeBaseUrl(apiBaseEl?.value);
+
+    heroRunBtn?.setAttribute("disabled", "true");
+    setStatus("Generating recommendations…");
+    showResult("Working…", []);
+    setHeroResponse("Generating…", true);
+
+    try {
+      const { ok, json, ms } = await recommend(baseUrl, query);
+      setLatency(ms);
+
+      if (!ok) {
+        const detail = json?.detail ? `\n\n${String(json.detail)}` : "";
+        setStatus("Request failed. See response for details.", "error");
+        showResult(`Error (${json?.status || "HTTP error"}).${detail}`, []);
+        setHeroResponse(`Error (${json?.status || "HTTP error"}).`, true);
+        return;
+      }
+
+      setStatus("Done.", "ok");
+      const responseText = String(json?.response || "");
+      showResult(responseText, json?.sources || []);
+      setHeroResponse(responseText || "Done.", true);
+    } catch (err) {
+      setStatus("Network error. Check the URL/CORS.", "error");
+      showResult(String(err), []);
+      setHeroResponse("Network error. Check the URL/CORS and try again.", true);
+    } finally {
+      heroRunBtn?.removeAttribute("disabled");
+    }
   });
 }
 
-wire();
+document.addEventListener("DOMContentLoaded", () => {
+  initExamples();
+  initDemo();
+});

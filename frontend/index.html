@@ -3,69 +3,194 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Food Recommender</title>
+    <meta name="description" content="AI-powered restaurant recommendations tailored to your cravings." />
+    <title>Foodify</title>
+
+    <!-- Typography (serif headline + clean sans UI) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
     <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
   </head>
   <body>
-    <main class="page">
-      <header class="header">
-        <div class="brand">
-          <div class="logo" aria-hidden="true">FR</div>
-          <div>
-            <div class="title">Food Recommender</div>
-            <div class="subtitle">Minimal RAG demo</div>
+    <div class="bg">
+      <div class="shell">
+        <header class="topbar">
+          <a class="brand" href="#" aria-label="Foodify home">
+            <span class="brand__mark">Food</span><span class="brand__mark brand__mark--strong">ify</span>
+          </a>
+
+          <div class="topbar__logo" aria-label="Logo">
+            <!-- Minimal bear mark (inline, no external asset needed) -->
+            <svg class="bearLogo" viewBox="0 0 256 128" role="img" aria-label="Bear logo">
+              <path
+                d="M28 82c0-26 18-46 46-52c9-22 30-34 58-34c24 0 44 10 55 28c10 0 20 4 26 11c9 10 8 22 0 30c3 6 5 12 5 20c0 24-18 40-44 40H86c-34 0-58-18-58-43Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="10"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M198 40h28"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="10"
+                stroke-linecap="round"
+              />
+              <circle cx="204" cy="34" r="4" fill="currentColor" />
+            </svg>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <section class="card">
-        <div class="row">
-          <label class="label" for="apiBase">Backend URL</label>
-          <input
-            id="apiBase"
-            class="input mono"
-            type="text"
-            placeholder="https://abcd-12-34-56-78.ngrok-free.app"
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <button id="saveApiBase" class="button secondary" type="button">Save</button>
-        </div>
+        <main>
+          <section class="hero" aria-label="Hero">
+            <div class="hero__left">
+              <div class="heroSwap" aria-label="Slogan / response">
+                <div class="heroSwap__panel heroSwap__panel--slogan">
+                  <h1 class="hero__title">
+                    Food that 
+                    <br />
+                    tastes just right <span class="hero__titleAccent">every time.</span>
+                    <br />
+                    <span class="hero__titleAccent"> </span>
+                  </h1>
 
-        <div class="row">
-          <label class="label" for="query">What are you craving?</label>
-          <textarea
-            id="query"
-            class="textarea"
-            rows="4"
-            placeholder="Example: I like spicy noodles and dumplings, vegetarian if possible."
-          ></textarea>
-        </div>
+                  <p class="hero__sub">
+                    AI's Tailored recommendations, restaurant-grade insights.
+                  </p>
 
-        <div class="actions">
-          <button id="submit" class="button" type="button">Recommend</button>
-          <button id="checkHealth" class="button secondary" type="button">Health</button>
-          <div id="status" class="status" aria-live="polite"></div>
-        </div>
-      </section>
+                  <ul class="hero__stats" aria-label="Highlights">
+                    <li><span class="dot"></span>1k+ recommendations</li>
+                    <li><span class="dot"></span>98% satisfaction</li>
+                  </ul>
+                </div>
 
-      <section class="card">
-        <div class="sectionTitle">Answer</div>
-        <div id="answer" class="answer muted">No results yet.</div>
-      </section>
+                <div class="heroSwap__panel heroSwap__panel--response" aria-live="polite">
+                  <div class="heroSwap__kicker">Generated response</div>
+                  <div class="heroSwap__text" id="heroResponseText">Run a query to see a preview here.</div>
+                </div>
+              </div>
+            </div>
 
-      <section class="card">
-        <div class="sectionTitle">Sources (retrieved context)</div>
-        <ol id="sources" class="sources muted">
-          <li>Nothing retrieved yet.</li>
-        </ol>
-      </section>
+            <div class="hero__right" aria-label="Preview card">
+              <div class="previewCard">
+                <div class="previewCard__inner" role="group" aria-label="Sample prompt">
+                  <div class="previewCard__icon" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M12 2l1.2 3.8L17 7l-3.8 1.2L12 12l-1.2-3.8L7 7l3.8-1.2L12 2Z"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M18 13l.8 2.6L21 16l-2.2.8L18 19l-.8-2.2L15 16l2.2-.4L18 13Z"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M6 13l.9 2.7L9 16l-2.1.7L6 19l-.7-2.3L3 16l2.3-.3L6 13Z"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </div>
 
-      <footer class="footer">
-        <span class="muted">Tip: paste your ngrok URL from Colab into “Backend URL”.</span>
-      </footer>
-    </main>
+                  <div class="promptRow" aria-label="Quick prompt">
+                    <div class="promptRow__prompt">
+                      <label class="field field--tight">
+                        <span class="field__label">What are you craving?</span>
+                        <textarea
+                          class="textarea textarea--hero"
+                          id="heroQuery"
+                          rows="5"
+                          placeholder="e.g., Cheap Thai food near downtown, spicy, good for groups"
+                          autocomplete="off"
+                        ></textarea>
+                      </label>
+                      <div class="promptRow__actions">
+                        <button class="btn btn--primary btn--cta" id="heroRunBtn" type="button">
+                          Get recommendations
+                          <span class="arrow" aria-hidden="true">→</span>
+                        </button>
+                      </div>
+                    </div>
 
-    <script src="./app.js"></script>
+                    <div class="promptRow__chips" aria-label="Autofill chips">
+                      <button class="chip chip--stack" type="button" data-example="Sushi near me under $25">Sushi</button>
+                      <button class="chip chip--stack" type="button" data-example="Cozy Italian date night, not too pricey">
+                        Italian
+                      </button>
+                      <button class="chip chip--stack" type="button" data-example="Best vegan-friendly brunch spots">
+                        Vegan Brunch
+                      </button>
+                      <button class="chip chip--stack" type="button" data-example="Spicy ramen, quick and casual">
+                        Spicy Ramen
+                      </button>
+                      <button class="chip chip--stack" type="button" data-example="Kid-friendly burgers and fries">
+                        Burgers
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="previewCard__caption">
+                  Click a chip to auto-fill the demo.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="demo" id="demo" aria-label="Demo">
+            <div class="demo__head">
+              <h2 class="demo__title">Try it now</h2>
+              <p class="demo__sub">
+                This calls your backend’s <code>POST /recommend</code>. If you’re running locally, keep the default URL.
+              </p>
+            </div>
+
+            <div class="demoGrid">
+              <form class="demoCard" id="demoForm">
+                <label class="field">
+                  <span class="field__label">API base URL</span>
+                  <input
+                    class="input"
+                    id="apiBaseUrl"
+                    name="apiBaseUrl"
+                    inputmode="url"
+                    placeholder="https://phenotypically-multiperforate-rodolfo.ngrok-free.dev"
+                    autocomplete="off"
+                  />
+                </label>
+
+                <input id="query" name="query" type="hidden" />
+
+                <div class="demoCard__actions">
+                  <button class="btn btn--ghost" id="healthBtn" type="button">Check health</button>
+                </div>
+
+                <div class="demoCard__status" id="status" role="status" aria-live="polite"></div>
+              </form>
+            </div>
+          </section>
+
+          <footer class="footer">
+            <span>Built for this repo’s RAG backend.</span>
+            <span class="footer__sep">·</span>
+            <a class="footer__link" href="#top">Back to top</a>
+          </footer>
+        </main>
+      </div>
+    </div>
   </body>
 </html>
