@@ -185,6 +185,10 @@ function initDemo() {
     showResult("Working…", []);
     setHeroResponse("Generating…", true);
 
+    // Clear the visible prompt immediately after starting a run.
+    if (heroQueryEl) heroQueryEl.value = "";
+    if (queryEl) queryEl.value = "";
+
     try {
       const { ok, json, ms } = await recommend(baseUrl, query);
       setLatency(ms);

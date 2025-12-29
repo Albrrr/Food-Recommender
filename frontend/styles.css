@@ -235,18 +235,24 @@ body {
 }
 
 .heroSwap__panel {
-  position: absolute;
-  inset: 0;
   transition: opacity 260ms ease, transform 260ms ease, filter 260ms ease;
 }
 
+.heroSwap__panel--slogan {
+  position: relative;
+}
+
 .heroSwap__panel--response {
+  position: absolute;
+  inset: 0;
   opacity: 0;
   transform: translateY(6px);
   pointer-events: none;
 }
 
 body.hasHeroResponse .heroSwap__panel--slogan {
+  position: absolute;
+  inset: 0;
   opacity: 0;
   transform: translateY(-6px);
   filter: blur(0.2px);
@@ -254,6 +260,8 @@ body.hasHeroResponse .heroSwap__panel--slogan {
 }
 
 body.hasHeroResponse .heroSwap__panel--response {
+  position: relative;
+  inset: auto;
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
