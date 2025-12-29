@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Food Recommender</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">FR</div>
+          <div>
+            <div class="title">Food Recommender</div>
+            <div class="subtitle">Minimal RAG demo</div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <label class="label" for="apiBase">Backend URL</label>
+          <input
+            id="apiBase"
+            class="input mono"
+            type="text"
+            placeholder="https://abcd-12-34-56-78.ngrok-free.app"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="saveApiBase" class="button secondary" type="button">Save</button>
+        </div>
+
+        <div class="row">
+          <label class="label" for="query">What are you craving?</label>
+          <textarea
+            id="query"
+            class="textarea"
+            rows="4"
+            placeholder="Example: I like spicy noodles and dumplings, vegetarian if possible."
+          ></textarea>
+        </div>
+
+        <div class="actions">
+          <button id="submit" class="button" type="button">Recommend</button>
+          <button id="checkHealth" class="button secondary" type="button">Health</button>
+          <div id="status" class="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="sectionTitle">Answer</div>
+        <div id="answer" class="answer muted">No results yet.</div>
+      </section>
+
+      <section class="card">
+        <div class="sectionTitle">Sources (retrieved context)</div>
+        <ol id="sources" class="sources muted">
+          <li>Nothing retrieved yet.</li>
+        </ol>
+      </section>
+
+      <footer class="footer">
+        <span class="muted">Tip: paste your ngrok URL from Colab into “Backend URL”.</span>
+      </footer>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
