@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Models / FAISS
+faiss_index/
+*.bin
+*.pt
+*.safetensors
+
+# Colab
+.ipynb_checkpoints/
