@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+torch
+transformers
+sentence-transformers
+langchain
+langchain-community
+faiss-cpu
+pyngrok
+accelerate
+sentencepiece
