@@ -40,16 +40,13 @@ Option 1: Locally
 - Open terminal(Powershell)
 - Navigate to backend/
 - Run the server with uvicorn app:app --host 0.0.0.0 --port 8000
+- Use **`http://localhost:8000`** in the frontend URL spot 
 
 Option 2: Hosting the backend on Google Colab (recommended for GPU)
 - Ensure that you are on a GPU
 - Click "Run All"
 - Backend server is now live
-
-For Both: 
-It will print **`Public URL: https://....ngrok-free.app`**. Use that as your frontend’s API base URL and call:
-- `GET /health`
-- `POST /recommend` with JSON: `{"query":"..."}`
+- It will print **`Public URL: https://....ngrok-free.app`**. Use that as the frontend’s API base URL 
 
 ### Frontend
 - Open a new instance of the terminal
