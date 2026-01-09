@@ -1,11 +1,12 @@
 fastapi
 uvicorn
 torch
-transformers
-sentence-transformers
+transformers==4.56.1
+sentence-transformers==3.0.0
 langchain
 langchain-community
 faiss-cpu
 pyngrok
 accelerate
 sentencepiece
+autoawq
