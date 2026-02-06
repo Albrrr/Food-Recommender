@@ -1,6 +1,13 @@
 # Food-Recommender
 A food recommendation website that is powered by AI to provide tailored restaurants to users based on their input.
 
+## Demonstration
+
+
+https://github.com/user-attachments/assets/749e86d0-9447-4e65-b2bd-0b741ac9f269
+
+
+
 
 ## Project-Structure
 
