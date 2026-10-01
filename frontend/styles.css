@@ -677,3 +677,92 @@ code {
     grid-template-columns: 1fr;
   }
 }
+
+/* ----------- Recommendation cards ----------- */
+
+.resultMessage {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+.recList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.recCard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow2);
+  display: grid;
+  gap: 4px;
+}
+
+.recCard--empty {
+  color: var(--muted);
+  box-shadow: none;
+  text-align: center;
+  padding: 24px 18px;
+}
+
+.recCard__dish {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.recCard__restaurant {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.recCard__why {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.recCard__diet {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--muted2);
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.sources summary {
+  cursor: pointer;
+}
+
+.sources summary::-webkit-details-marker {
+  color: var(--accent);
+}
+
+.demoCard__status[data-kind="error"] {
+  color: #8c2f2f;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

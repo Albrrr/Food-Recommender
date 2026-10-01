@@ -1,13 +1,17 @@
 # Python
 __pycache__/
 *.pyc
-.env
+.pytest_cache/
+.ruff_cache/
 
-# Models / FAISS
-faiss_index/
-*.bin
-*.pt
-*.safetensors
+# Environments
+.venv/
+venv/
+.env
 
 # Colab
 .ipynb_checkpoints/
+
+# Note: backend/faiss_store/ is committed deliberately - it is ~14MB and lets a
+# container boot by loading the index rather than rebuilding it. Regenerate with
+# `python scripts/build_index.py`.

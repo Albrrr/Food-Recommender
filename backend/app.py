@@ -1,115 +1,233 @@
-"""
-FastAPI entry point.
+"""FastAPI application.
 
-- Loads a LangChain FAISS vector store from ./faiss_store (or builds it from DATA.json)
-- Loads a Llama 3B Instruct model (see backend/model.py)
-- Runs a simple RAG pipeline (see backend/rag.py)
+Request path: retrieve RETRIEVE_K candidates from FAISS -> rerank to
+RERANK_TOP_N with a cross-encoder -> generate grounded recommendations.
+
+The route is a plain `def`, not `async def`: embedding, reranking and the
+upstream call are all blocking, and a blocking call inside an `async def`
+handler runs on the event loop and freezes every other request - including
+/health. As a sync route, FastAPI runs it in a threadpool instead.
 """
 
 from __future__ import annotations
 
-import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
-from model import load_model
-from rag import run_rag
-from schemas import QueryRequest, QueryResponse
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=(
-        ["*"]
-        if not os.environ.get("CORS_ORIGINS")
-        else [o.strip() for o in os.environ["CORS_ORIGINS"].split(",") if o.strip()]
-    ),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+from config import Settings, get_settings
+from embeddings import load_embedding_backend
+from generator import GenerationError, Generator, OpenRouterGenerator
+from index_store import MenuIndex
+from observability import (
+    RequestContextMiddleware,
+    StageTimer,
+    configure_logging,
+    get_logger,
 )
+from rag import run_rag
+from rerank import CrossEncoderReranker, Reranker
+from schemas import HealthResponse, QueryRequest, QueryResponse, Source
 
-vector_store: FAISS | None = None
-llm = None
-tokenizer = None
-startup_error: str | None = None
+BASE_DIR = Path(__file__).resolve().parent
+STORE_DIR = BASE_DIR / "faiss_store"
 
-def _workspace_path() -> Path:
-    return Path(__file__).resolve().parent
+log = get_logger()
+limiter = Limiter(key_func=get_remote_address)
 
-def load_vector_store() -> FAISS:
-    base = _workspace_path()
-    store_dir = base / "faiss_store"
-    data_json = base / "DATA.json"
 
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+class AppState:
+    index: MenuIndex | None = None
+    reranker: Reranker | None = None
+    generator: Generator | None = None
+    startup_error: str | None = None
 
-    # Preferred path: load the already-built store (index.faiss + index.pkl)
-    if store_dir.exists():
-        return FAISS.load_local(
-            str(store_dir),
-            embeddings,
-            allow_dangerous_deserialization=True,
-        )
 
-    # Fallback: build it once from DATA.json and save to store_dir
-    if not data_json.exists():
-        raise FileNotFoundError(
-            f"Missing FAISS store ({store_dir}) and missing dataset ({data_json})."
-        )
+state = AppState()
 
-    from vectorstore import load_vectorstore
 
-    store = load_vectorstore(json_path=str(data_json))
-    store.save_local(str(store_dir))
-    return store
-
-@app.on_event("startup")
-def on_startup():
-    global vector_store, llm, tokenizer, startup_error
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    configure_logging(settings.log_level)
     try:
-        vector_store = load_vector_store()
-        llm, tokenizer = load_model()
-        startup_error = None
-    except Exception as e:
-        # Keep the API process alive so /health can report what went wrong.
-        startup_error = str(e)
-        vector_store = None
-        llm = None
-        tokenizer = None
+        backend = load_embedding_backend(settings.embed_backend, settings.embed_model)
+        state.index = MenuIndex.load(STORE_DIR, backend, settings.embed_model)
+        state.reranker = CrossEncoderReranker(settings.rerank_model)
+        state.generator = OpenRouterGenerator(settings)
+        state.startup_error = None
+        log.info(
+            "startup.ready",
+            documents=len(state.index),
+            embed_model=settings.embed_model,
+            llm_model=settings.llm_model,
+        )
+    except Exception as exc:  # keep the process alive so /health can explain
+        state.startup_error = f"{type(exc).__name__}: {exc}"
+        state.index = state.reranker = state.generator = None
+        log.error("startup.failed", error=state.startup_error)
+    yield
 
-@app.get("/health")
-async def health_check():
-    ok = vector_store is not None and llm is not None and tokenizer is not None
-    return {
-        "status": "ok" if ok else "not_ready",
-        "error": startup_error,
-        "has_vector_store": vector_store is not None,
-        "has_model": llm is not None,
-    }
 
-@app.post("/recommend", response_model=QueryResponse)
-async def recommend_food(request: QueryRequest):
-    if not request.query.strip():
-        raise HTTPException(status_code=400, detail="Query must not be empty.")
-    if vector_store is None or llm is None or tokenizer is None:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    lifespan_handler=lifespan,
+) -> FastAPI:
+    """Build the app. Tests pass lifespan_handler=None to skip model loading."""
+    settings = settings or get_settings()
+    application = FastAPI(
+        title="Foodify",
+        description="Retrieval-augmented restaurant menu recommendations.",
+        version="2.0.0",
+        lifespan=lifespan_handler,
+    )
+    application.state.limiter = limiter
+    application.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+    application.add_middleware(RequestContextMiddleware)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origin_list,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
+    application.include_router(router)
+
+    # Serve the frontend from the same origin as the API. Same-origin means the
+    # browser never makes a cross-origin request, so there is no CORS handshake
+    # to misconfigure and no backend URL for the frontend to hardcode.
+    # Mounted last so /health and /recommend keep precedence over the catch-all.
+    frontend_dir = BASE_DIR.parent / "frontend"
+    if frontend_dir.is_dir():
+        application.mount(
+            "/", StaticFiles(directory=frontend_dir, html=True), name="frontend"
+        )
+
+    return application
+
+
+def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many requests. Please slow down."},
+    )
+
+
+# --- dependencies (overridable in tests) -------------------------------------
+
+
+def get_index() -> MenuIndex:
+    if state.index is None:
+        raise HTTPException(status_code=503, detail="Search index is not available.")
+    return state.index
+
+
+def get_reranker() -> Reranker:
+    if state.reranker is None:
+        raise HTTPException(status_code=503, detail="Reranker is not available.")
+    return state.reranker
+
+
+def get_generator() -> Generator:
+    if state.generator is None:
+        raise HTTPException(status_code=503, detail="Generator is not available.")
+    return state.generator
+
+
+# --- routes -------------------------------------------------------------------
+
+router = APIRouter()
+
+
+@router.get("/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    settings = get_settings()
+    ready = all((state.index, state.reranker, state.generator))
+    return HealthResponse(
+        status="ok" if ready else "not_ready",
+        index_loaded=state.index is not None,
+        reranker_loaded=state.reranker is not None,
+        generator_configured=state.generator is not None,
+        document_count=len(state.index) if state.index else None,
+        embed_model=settings.embed_model,
+        llm_model=settings.llm_model,
+        error=state.startup_error,
+    )
+
+
+@router.post("/recommend", response_model=QueryResponse)
+@limiter.limit(lambda: get_settings().rate_limit)
+def recommend(
+    request: Request,
+    payload: QueryRequest,
+    index: MenuIndex = Depends(get_index),
+    reranker: Reranker = Depends(get_reranker),
+    generator: Generator = Depends(get_generator),
+) -> QueryResponse:
+    settings = get_settings()
+    timer = StageTimer()
+
+    with timer.stage("retrieve"):
+        candidates = index.search(payload.query, k=settings.retrieve_k)
+
+    with timer.stage("rerank"):
+        reranked = reranker.rerank(
+            payload.query, [doc for doc, _ in candidates], settings.rerank_top_n
+        )
+
+    documents = [doc for doc, _ in reranked]
+
+    try:
+        with timer.stage("generate"):
+            recommendations, message, result = run_rag(
+                payload.query, documents, generator
+            )
+    except GenerationError as exc:
+        log.warning(
+            "recommend.generation_failed",
+            error=str(exc),
+            status=exc.status_code,
+            **timer.finish(),
+        )
         raise HTTPException(
-            status_code=503,
-            detail=f"Backend not ready. Startup error: {startup_error}",
-        )
-    try:
-        docs = vector_store.similarity_search(request.query, k=3)
-        sources = [d.page_content for d in docs]
-        response_text = run_rag(request.query, vector_store, llm, tokenizer, k=3)
-        return QueryResponse(response=response_text, sources=sources)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            status_code=exc.status_code,
+            detail="Could not generate recommendations right now. Please try again.",
+        ) from exc
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=int(os.environ.get("PORT", "8000")), reload=True)
+    log.info(
+        "recommend.ok",
+        query_length=len(payload.query),
+        candidates=len(candidates),
+        returned=len(recommendations),
+        model=result.model,
+        prompt_tokens=result.prompt_tokens,
+        completion_tokens=result.completion_tokens,
+        cost_usd=result.cost_usd,
+        **timer.finish(),
+    )
+
+    return QueryResponse(
+        recommendations=recommendations,
+        message=message,
+        sources=[
+            Source(
+                restaurant=doc.restaurant,
+                category=doc.category,
+                item=doc.item,
+                description=doc.description,
+                score=score,
+            )
+            for doc, score in reranked
+        ],
+    )
+
+
+app = create_app()
