@@ -10,6 +10,13 @@ query → Qwen3 embedding → FAISS (top 30) → cross-encoder rerank (top 6) �
 
 End to end in **~2.7s**, at roughly **$0.0005** per query.
 
+## Demonstration
+
+https://github.com/user-attachments/assets/749e86d0-9447-4e65-b2bd-0b741ac9f269
+
+_Recorded before the retrieval rebuild — the UI now renders structured
+recommendation cards rather than a prose block._
+
 ## How it works
 
 **Retrieval.** Every menu item is embedded with
