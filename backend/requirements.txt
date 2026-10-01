@@ -1,11 +1,28 @@
-fastapi
-uvicorn
-torch
-transformers
-sentence-transformers
-langchain
-langchain-community
-faiss-cpu
-pyngrok
-accelerate
-sentencepiece
+# Direct runtime dependencies, pinned. A full transitive lock is in
+# requirements.lock.txt - install that for reproducible deploys.
+#
+# Removed in the v2 rebuild: langchain, langchain-community (replaced by a
+# direct faiss index), transformers/accelerate/sentencepiece (no local LLM),
+# pyngrok (no tunnel).
+
+# --- web ---
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.5
+pydantic-settings==2.15.0
+slowapi==0.1.10
+structlog==26.1.0
+
+# --- generation (OpenRouter over the OpenAI-compatible API) ---
+openai==3.14.1
+
+# --- retrieval ---
+faiss-cpu==1.15.0
+numpy==2.5.3
+# Embeddings: Qwen3-Embedding-0.6B. Needs torch; mainline fastembed has no Qwen
+# model, so the ONNX path is not available for this model. Set
+# EMBED_BACKEND=fastembed + EMBED_MODEL=BAAI/bge-base-en-v1.5 to drop torch.
+sentence-transformers==6.0.1
+torch==2.14.0
+# Reranking: cross-encoder over ONNX. Required on both embedding paths.
+fastembed==0.8.0

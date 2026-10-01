@@ -66,8 +66,8 @@
                   </p>
 
                   <ul class="hero__stats" aria-label="Highlights">
-                    <li><span class="dot"></span>1k+ recommendations</li>
-                    <li><span class="dot"></span>98% satisfaction</li>
+                    <li><span class="dot"></span>75 restaurants</li>
+                    <li><span class="dot"></span>3,201 dishes indexed</li>
                   </ul>
                 </div>
 
@@ -128,19 +128,11 @@
                     </div>
 
                     <div class="promptRow__chips" aria-label="Autofill chips">
-                      <button class="chip chip--stack" type="button" data-example="Sushi near me under $25">Sushi</button>
-                      <button class="chip chip--stack" type="button" data-example="Cozy Italian date night, not too pricey">
-                        Italian
-                      </button>
-                      <button class="chip chip--stack" type="button" data-example="Best vegan-friendly brunch spots">
-                        Vegan Brunch
-                      </button>
-                      <button class="chip chip--stack" type="button" data-example="Spicy ramen, quick and casual">
-                        Spicy Ramen
-                      </button>
-                      <button class="chip chip--stack" type="button" data-example="Kid-friendly burgers and fries">
-                        Burgers
-                      </button>
+                      <button class="chip chip--stack" type="button" data-example="Something spicy and vegetarian">Spicy veg</button>
+                      <button class="chip chip--stack" type="button" data-example="Fresh raw fish, sushi or crudo">Raw fish</button>
+                      <button class="chip chip--stack" type="button" data-example="Rich comforting pasta">Pasta</button>
+                      <button class="chip chip--stack" type="button" data-example="Grilled chicken with bright citrus flavours">Grilled</button>
+                      <button class="chip chip--stack" type="button" data-example="A light salad with goat cheese">Salad</button>
                     </div>
                   </div>
                 </div>
@@ -155,43 +147,26 @@
             <div class="demo__head">
               <h2 class="demo__title">Try it now</h2>
               <p class="demo__sub">
-                This calls your backend’s <code>POST /recommend</code>. If you’re running locally, keep the default URL.
+                Every suggestion is drawn from a real menu — expand “Menu items searched” to see exactly what the model was shown.
               </p>
             </div>
 
             <div class="demoGrid">
               <form class="demoCard" id="demoForm">
-                <label class="field">
-                  <span class="field__label">API base URL</span>
-                  <input
-                    class="input"
-                    id="apiBaseUrl"
-                    name="apiBaseUrl"
-                    inputmode="url"
-                    placeholder="https://phenotypically-multiperforate-rodolfo.ngrok-free.dev"
-                    autocomplete="off"
-                  />
-                </label>
-
-                <input id="query" name="query" type="hidden" />
-
-                <div class="demoCard__actions">
-                  <button class="btn btn--ghost" id="healthBtn" type="button">Check health</button>
-                </div>
-
                 <div class="demoCard__status" id="status" role="status" aria-live="polite"></div>
 
-                <section class="inlineResult" aria-label="Response">
+                <section class="inlineResult" aria-label="Recommendations">
                   <div id="resultAnchor"></div>
                   <div class="inlineResult__top">
-                    <h3 class="inlineResult__title">Response</h3>
+                    <h3 class="inlineResult__title">Recommendations</h3>
                     <span class="pill" id="latencyPill" hidden></span>
                   </div>
-                  <div class="resultText" id="resultText">Run a query to see recommendations here.</div>
-                  <div class="sources" id="sources" hidden>
-                    <div class="sources__title">Sources</div>
+                  <p class="resultMessage" id="resultMessage"></p>
+                  <ul class="recList" id="resultList"></ul>
+                  <details class="sources" id="sources" hidden>
+                    <summary class="sources__title">Menu items searched</summary>
                     <ol class="sources__list" id="sourcesList"></ol>
-                  </div>
+                  </details>
                 </section>
               </form>
             </div>
